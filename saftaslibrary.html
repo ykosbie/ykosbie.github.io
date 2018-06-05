@@ -203,17 +203,19 @@
             </div>
         </form>
 
-        <ul class="list-unstyled">
-            <li ng-repeat="item in libCtrl.items" class="thumbnail">
-                <img ng-src="{{ ::item.imageurl }}" />
-                <div class="caption">
-                    <h3>{{ ::item.title }}</h3>
-                    <p>{{ ::item.synopsis }}</p>
-                    <ul>
-                        <li ng-repeat="column in ::libCtrl.columns" ng-hide="column.hide">
-                            {{ ::column.title }}: {{ ::item[column.name] }}
-                        </li>
-                    </ul>
+        <ul class="list-unstyled row">
+            <li ng-repeat="item in libCtrl.items" class="col-md-3">
+                <div class="thumbnail">
+                    <img ng-src="{{ ::item.imageurl }}" />
+                    <div class="caption">
+                        <h3>{{ ::item.title }}</h3>
+                        <p>{{ ::item.synopsis }}</p>
+                        <ul>
+                            <li ng-repeat="column in ::libCtrl.columns" ng-hide="column.hide">
+                                {{ ::column.title }}: {{ ::item[column.name] }}
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </li>
         </ul>
