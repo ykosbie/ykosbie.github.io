@@ -176,9 +176,27 @@
             }
         })();
     </script>
+
+    <style>
+        body {
+            padding-top: 70px;
+        }
+
+        .library-item:nth-child(4n+1) {
+            clear: both;
+        }
+
+        .library-item.col-md-6 {
+            transition: all ease-in 0.5s;
+        }
+
+        .library-item.col-md-3 {
+            transition: all ease-in 0.5s;
+        }
+    </style>
 </head>
 <body ng-app="app">
-    <nav class="navbar navbar-default">
+    <nav class="navbar navbar-default navbar-fixed-top">
         <div class="navbar-header">
             <a class="navbar-brand" href="#">"A Safta's Love" Library - Dedicated to the Memory of Rivka Serwatien (Safta Brynin)</a>
         </div>
@@ -204,17 +222,25 @@
         </form>
 
         <ul class="list-unstyled row">
-            <li ng-repeat="item in libCtrl.items" class="col-md-3">
+            <li ng-repeat="item in libCtrl.items" class="library-item" ng-class="{'col-md-3':!item.showDetails,'col-md-6':item.showDetails}">
                 <div class="thumbnail">
                     <img ng-src="{{ ::item.imageurl }}" />
                     <div class="caption">
-                        <h3>{{ ::item.title }}</h3>
-                        <p>{{ ::item.synopsis }}</p>
-                        <ul>
-                            <li ng-repeat="column in ::libCtrl.columns" ng-hide="column.hide">
-                                {{ ::column.title }}: {{ ::item[column.name] }}
-                            </li>
-                        </ul>
+                        <h3>
+                            <button class="btn btn-default" type="button" ng-click="item.showDetails=!item.showDetails">
+                                <span class="fa" ng-class="{'fa-info':!item.showDetails,'fa-eye-slash':item.showDetails}"></span>
+                            </button>
+                            {{ ::item.title }}
+                        </h3>
+
+                        <div ng-show="item.showDetails">
+                            <p>{{ ::item.synopsis }}</p>
+                            <ul>
+                                <li ng-repeat="column in ::libCtrl.columns" ng-hide="column.hide">
+                                    {{ ::column.title }}: {{ ::item[column.name] }}
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </li>
