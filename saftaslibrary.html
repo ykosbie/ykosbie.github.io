@@ -2,13 +2,18 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://kendo.cdn.telerik.com/2016.1.406/styles/kendo.common-bootstrap.min.css" />
+    <link rel="stylesheet" href="https://kendo.cdn.telerik.com/2016.1.406/styles/kendo.bootstrap.min.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
     <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
     <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.min.js"></script>
+    <script src="https://kendo.cdn.telerik.com/2016.2.504/js/kendo.all.min.js"></script>
     <title>A Safta's Love - Dedicated to the Memory of Rivka Serwatien (Safta Brynin)</title>
 
     <script>
+        // "api" ref - https://developers.google.com/sheets/api/v3/data
         // app.module.js
         (function () {
             "use strict";
@@ -21,10 +26,40 @@
             "use strict";
             angular
                 .module("app")
-                .value("googleSheetKey", "1aoC0YoVwaQBgpaXexCGKccQttTtn75BenWuVZsoimf8");
+                .value("googleSheetKey", "1aoC0YoVwaQBgpaXexCGKccQttTtn75BenWuVZsoimf8")
+                .value("kendo", kendo);
         })();
 
-        //library.controller.js
+        // loading.directive.js
+        (function () {
+            "use strict";
+
+            angular
+                .module("app")
+                .directive("sfLoading", sfLoading);
+
+            sfLoading.$inject = ["kendo"];
+            function sfLoading(kendo) {
+                var directive = {
+                    link: link,
+                    restrict: "A"
+                };
+
+                function link(scope, element, attrs) {
+                    if (element.css("position") === "static") element.css("position", "relative");
+
+                    scope.$watch(attrs.sfLoading, function (value) {
+                        kendo.ui.progress(element, value);
+                    });
+                }
+
+                return directive;
+            }
+        })();
+
+
+
+        // library.controller.js
         (function () {
             "use strict";
 
@@ -36,32 +71,51 @@
             function LibraryController(googleSheetKey, $http, $rootScope) {
                 var vm = this;
 
+                vm.clearFilter = clearFilter;
+                vm.getStructuredQuery = getStructuredQuery;
                 vm.filter = filter;
-                vm.loadRawData = loadRawData;
-                vm.parseData = parseData;
+                vm.parseColumns = parseColumns;
+                vm.parseRows = parseRows;
 
                 init();
 
+                function clearFilter() {
+                    for (var ixColumn = 0; ixColumn < vm.columns.length; ixColumn++) {
+                        delete vm.columns[ixColumn].filter;
+                    }
+
+                    vm.filter();
+                }
+
+                function getStructuredQuery() {
+                    var sq = "";
+
+                    for (var ixColumn = 0; ixColumn < vm.columns.length; ixColumn++) {
+                        if (vm.columns[ixColumn].filter) {
+                            if (sq.length) sq += " and ";
+                            sq += vm.columns[ixColumn].name + "=" + vm.columns[ixColumn].filter;
+                        }
+                    }
+
+                    return sq;
+                }
+
                 function filter() {
                     vm.loading = true;
+                    var sq = vm.getStructuredQuery();
+                    var params = {};
+                    if (sq) params.sq = sq;
 
-                    $rootScope.$evalAsync(function () {
-                        vm.items.length = 0;
+                    $http({
+                        url: "https://spreadsheets.google.com/feeds/list/" + googleSheetKey + "/od6/public/full?alt=json",
+                        method: "GET",
+                        params: params
+                    })
+                        .then(function (httpResponse) {
+                            vm.items = vm.parseRows(httpResponse.data);
 
-                        for (var ixItem = 0; ixItem < vm.data.items.length; ixItem++) {
-                            var item = vm.data.items[ixItem];
-
-                            for (var ixColumn = 0; ixColumn < vm.data.columns.length; ixColumn++) {
-                                var col = vm.data.columns[ixColumn];
-
-                                if (!col.filter || item[col.name] === col.filter) {
-                                    vm.items.push(item);
-                                }
-                            }
-                        }
-
-                        vm.loading = false;
-                    });
+                            vm.loading = false;
+                        });
                 }
 
                 function init() {
@@ -74,77 +128,91 @@
                         .then(function (httpResponse) {
                             vm.loading = false;
 
-                            vm.loadRawData(httpResponse.data);
+                            vm.columns = vm.parseColumns(httpResponse.data);
+                            vm.items = vm.parseRows(httpResponse.data);
                         });
                 }
 
-                function loadRawData(rawData) {
-                    vm.data = vm.parseData(rawData);
-
-                    vm.columns = vm.data.columns;
-                    vm.items = vm.data.rows;
-                }
-
-                function parseData(rawData) {
-                    var parsed = {
-                        columns: [],
-                        rows: []
-                    };
+                function parseColumns(rawData) {
+                    var columns = [];
 
                     if (rawData.feed.entry && rawData.feed.entry.length) {
                         var row1 = rawData.feed.entry[0];
                         for (var propName in row1) {
                             if (row1.hasOwnProperty(propName) && propName.startsWith("gsx$")) {
-                                parsed.columns.push({
-                                    name: propName[4].toUpperCase() + propName.substring(5),
-                                    entryPropName: propName
-                                });
+                                var col = {
+                                    name: propName.substring(4),
+                                    entryPropName: propName,
+                                    title: propName[4].toUpperCase() + propName.substring(5)
+                                };
+
+                                if (col.name === "imageurl") col.hide = true;
+                                columns.push(col);
                             }
-                        }
-
-                        for (var ixEntry = 0; ixEntry < rawData.feed.entry.length; ixEntry++) {
-                            var row = {};
-
-                            for (var ixColumn = 0; ixColumn < parsed.columns.length; ixColumn++) {
-                                var col = parsed.columns[ixColumn];
-                                row[col.name] = rawData.feed.entry[ixEntry][col.entryPropName].$t;
-                            }
-
-                            parsed.rows.push(row);
                         }
                     }
 
-                    return parsed;
+                    return columns;
+                }
+
+                function parseRows(rawData) {
+                    var rows = [];
+
+                    if (rawData.feed.entry && rawData.feed.entry.length) {
+                        for (var ixEntry = 0; ixEntry < rawData.feed.entry.length; ixEntry++) {
+                            var row = {};
+
+                            for (var ixColumn = 0; ixColumn < vm.columns.length; ixColumn++) {
+                                var col = vm.columns[ixColumn];
+                                row[col.name] = rawData.feed.entry[ixEntry][col.entryPropName].$t;
+                            }
+
+                            rows.push(row);
+                        }
+                    }
+
+                    return rows;
                 }
             }
         })();
     </script>
 </head>
-<body class="container" ng-app="app">
-    <div ng-controller="LibraryController as libCtrl" sf-loading="libCtrl.loading">
-        <form class="form-inline" ng-submit="libCtrl.filter()">
-            <div class="form-group" ng-repeat="column in libCtrl.columns">
-                <label class="col-md-3">{{ column.name }}</label>
+<body ng-app="app">
+    <nav class="navbar navbar-default">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="#">"A Safta's Love" Library - Dedicated to the Memory of Rivka Serwatien (Safta Brynin)</a>
+        </div>
+    </nav>
+
+    <div class="container" ng-controller="LibraryController as libCtrl" sf-loading="libCtrl.loading">
+        <form class="form-inline" ng-submit="libCtrl.filter()" name="frmLibFilter">
+            <div class="form-group col-md-3" ng-repeat="column in libCtrl.columns" ng-hide="column.hide">
+                <label class="col-md-3 control-label">{{ column.title }}</label>
                 <div class="col-md-9">
-                    <input type="text" ng-model="column.filter" />
+                    <input type="text" ng-model="column.filter" class="form-control" />
                 </div>
             </div>
 
+            <div class="clearfix"></div>
+
             <div class="form-group">
                 <div class="col-md-offset-3 col-md-9">
-                    <button>Filter</button>
+                    <button class="btn btn-primary">Filter</button>
+                    <button class="btn btn-default" type="button" ng-click="libCtrl.clearFilter() || frmLibFilter.$setPristine()">Clear</button>
                 </div>
             </div>
         </form>
 
         <ul class="list-unstyled">
             <li ng-repeat="item in libCtrl.items" class="thumbnail">
-                <img ng-src="::item.imageUrl" />
+                <img ng-src="{{ ::item.imageurl }}" />
                 <div class="caption">
                     <h3>{{ ::item.title }}</h3>
                     <p>{{ ::item.synopsis }}</p>
                     <ul>
-                        <li>Publisher: {{ item.publisher }}</li>
+                        <li ng-repeat="column in ::libCtrl.columns" ng-hide="column.hide">
+                            {{ ::column.title }}: {{ ::item[column.name] }}
+                        </li>
                     </ul>
                 </div>
             </li>
