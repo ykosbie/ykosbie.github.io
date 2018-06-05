@@ -91,8 +91,8 @@
                         rows: []
                     };
 
-                    if (rawData.entry && rawData.entry.length) {
-                        var row1 = rawData.entry[0];
+                    if (rawData.feed.entry && rawData.feed.entry.length) {
+                        var row1 = rawData.feed.entry[0];
                         for (var propName in row1) {
                             if (row1.hasOwnProperty(propName) && propName.startsWith("gsx$")) {
                                 parsed.columns.push({
@@ -102,12 +102,12 @@
                             }
                         }
 
-                        for (var ixEntry = 0; ixEntry < rawData.entry.length; ixEntry++) {
+                        for (var ixEntry = 0; ixEntry < rawData.feed.entry.length; ixEntry++) {
                             var row = {};
 
                             for (var ixColumn = 0; ixColumn < parsed.columns.length; ixColumn++) {
                                 var col = parsed.columns[ixColumn];
-                                row[col.name] = rawData.entry[ixEntry][col.entryPropName].$t;
+                                row[col.name] = rawData.feed.entry[ixEntry][col.entryPropName].$t;
                             }
 
                             parsed.rows.push(row);
