@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+    <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <script src="http://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.min.js"></script>
+    <title>A Safta's Love - Dedicated to the Memory of Rivka Serwatien (Safta Brynin)</title>
+
+    <script>
+        // app.module.js
+        (function () {
+            "use strict";
+
+            angular.module("app", []);
+        })();
+
+        // app.module.private.js
+        (function () {
+            "use strict";
+            angular
+                .module("app")
+                .value("googleSheetKey", "2PACX-1vSxgeeCF07-aGgXIf6JCN7ZOSwkfh12BCR_bg__Fr8_2zu8U8_vhleqxx7CwyqhreDqZOSElhfxA0WV");
+        })();
+
+        //library.controller.js
+        (function () {
+            "use strict";
+
+            angular
+                .module("app")
+                .controller("LibraryController", LibraryController);
+
+            LibraryController.$inject = ["googleSheetKey", "$http", "$rootScope"];
+            function LibraryController(googleSheetKey, $http, $rootScope) {
+                var vm = this;
+
+                vm.filter = filter;
+                vm.loadRawData = loadRawData;
+                vm.parseData = parseData;
+
+                init();
+
+                function filter() {
+                    vm.loading = true;
+
+                    $rootScope.$evalAsync(function () {
+                        vm.items.length = 0;
+
+                        for (var ixItem = 0; ixItem < vm.data.items.length; ixItem++) {
+                            var item = vm.data.items[ixItem];
+
+                            for (var ixColumn = 0; ixColumn < vm.data.columns.length; ixColumn++) {
+                                var col = vm.data.columns[ixColumn];
+
+                                if (!col.filter || item[col.name] === col.filter) {
+                                    vm.items.push(item);
+                                }
+                            }
+                        }
+
+                        vm.loading = false;
+                    });
+                }
+
+                function init() {
+                    vm.loading = true;
+
+                    $http({
+                        url: "https://spreadsheets.google.com/feeds/list/" + googleSheetKey + "/od6/public/values?alt=json-in-script&callback=",
+                        method: "GET"
+                    })
+                        .then(function (httpResponse) {
+                            vm.loading = false;
+
+                            vm.loadRawData(httpResponse.data);
+                        });
+                }
+
+                function loadRawData(rawData) {
+                    vm.data = vm.parseData(rawData);
+
+                    vm.columns = vm.data.columns;
+                    vm.items = vm.data.items;
+                }
+
+                function parseData(rawData) {
+                    return {
+                        columns: [],
+                        data: []
+                    };
+                }
+            }
+        })();
+    </script>
+</head>
+<body class="container" ng-app="app">
+    <div ng-controller="LibraryController as libCtrl" sf-loading="libCtrl.loading">
+        <form class="form-inline" ng-submit="libCtrl.filter()">
+            <div class="form-group" ng-repeat="column in libCtrl.columns">
+                <label class="col-md-3">{{ column.name }}</label>
+                <div class="col-md-9">
+                    <input type="text" ng-model="column.filter" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-md-offset-3 col-md-9">
+                    <button>Filter</button>
+                </div>
+            </div>
+        </form>
+
+        <ul class="list-unstyled">
+            <li ng-repeat="item in libCtrl.items" class="thumbnail">
+                <img ng-src="::item.imageUrl" />
+                <div class="caption">
+                    <h3>{{ ::item.title }}</h3>
+                    <p>{{ ::item.synopsis }}</p>
+                    <ul>
+                        <li>Publisher: {{ item.publisher }}</li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>
