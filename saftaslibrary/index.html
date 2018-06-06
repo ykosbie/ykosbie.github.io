@@ -251,7 +251,7 @@
         </form>
 
         <ul class="list-unstyled row">
-            <li ng-repeat="item in libCtrl.items" class="library-item" ng-class="{'col-md-3':!item.showDetails && !libCtrl.summaryView, 'col-md-6':item.showDetails || libCtrl.summaryView }">
+            <li ng-repeat="item in libCtrl.items" class="library-item" ng-class="{'col-md-3 col-sm-6':!item.showDetails && !libCtrl.summaryView, 'col-md-6 col-sm-12':item.showDetails || libCtrl.summaryView }">
                 <div class="thumbnail right-caption">
                     <img ng-src="{{ ::item.imageurl }}" />
                     <div class="caption">
