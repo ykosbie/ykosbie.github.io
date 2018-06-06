@@ -133,7 +133,7 @@
                                     title: propName[4].toUpperCase() + propName.substring(5)
                                 };
 
-                                if (col.name === "imageurl") col.hide = true;
+                                if (col.name === "imageurl" || col.name === "synopsis") col.hide = true;
                                 columns.push(col);
                             }
                         }
