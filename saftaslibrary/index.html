@@ -194,16 +194,44 @@
         .library-item.col-md-3 {
             transition: all ease-in 0.5s;
         }
+
+        .library-item .thumbnail > img {
+            width: 250px;
+        }
+
+        .thumbnail.right-caption > img {
+            float: left;
+            margin-right: 18px;
+            margin-bottom: 10px;
+        }
+
+        .thumbnail.right-caption {
+            float: left;
+        }
+
+        .thumbnail.right-caption > .caption {
+            padding: 4px;
+        }
     </style>
 </head>
-<body ng-app="app">
+<body ng-app="app" ng-controller="LibraryController as libCtrl" sf-loading="libCtrl.loading">
     <nav class="navbar navbar-default navbar-fixed-top">
-        <div class="navbar-header">
-            <a class="navbar-brand" href="#">"A Safta's Love" Library - Dedicated to the Memory of Rivka Serwatien (Safta Brynin)</a>
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="#">"A Safta's Love" Library - Dedicated to the Memory of Rivka Serwatien (Safta Brynin)</a>
+            </div>
+
+            <span class="navbar-btn navbar-right">
+                <button type="button" class="btn btn-link" ng-click="libCtrl.summaryView=!libCtrl.summaryView" style="margin-right: 20px">
+                    <span class="fa" ng-class="{'fa-plus-square-o':!libCtrl.summaryView,'fa-minus-square-o':libCtrl.summaryView}"></span>
+                    <span ng-show="!libCtrl.summaryView">Expand All</span>
+                    <span ng-show="libCtrl.summaryView">Collapse All</span>
+                </button>
+            </span>
         </div>
     </nav>
 
-    <div class="container" ng-controller="LibraryController as libCtrl" sf-loading="libCtrl.loading">
+    <div class="container">
         <form class="form-inline" ng-submit="libCtrl.filter()" name="frmLibFilter">
             <div class="form-group col-md-3" ng-repeat="column in libCtrl.columns" ng-hide="column.hide">
                 <label class="col-md-3 control-label">{{ column.title }}</label>
@@ -223,18 +251,18 @@
         </form>
 
         <ul class="list-unstyled row">
-            <li ng-repeat="item in libCtrl.items" class="library-item" ng-class="{'col-md-3':!item.showDetails,'col-md-6':item.showDetails}">
-                <div class="thumbnail">
+            <li ng-repeat="item in libCtrl.items" class="library-item" ng-class="{'col-md-3':!item.showDetails && !libCtrl.summaryView, 'col-md-6':item.showDetails || libCtrl.summaryView }">
+                <div class="thumbnail right-caption">
                     <img ng-src="{{ ::item.imageurl }}" />
                     <div class="caption">
                         <h3>
-                            <button class="btn btn-default" type="button" ng-click="item.showDetails=!item.showDetails">
+                            <button class="btn btn-default" type="button" ng-click="item.showDetails=!item.showDetails" ng-show="!libCtrl.summaryView">
                                 <span class="fa" ng-class="{'fa-info':!item.showDetails,'fa-eye-slash':item.showDetails}"></span>
                             </button>
                             {{ ::item.title }}
                         </h3>
 
-                        <div ng-show="item.showDetails">
+                        <div ng-show="item.showDetails || libCtrl.summaryView">
                             <p>{{ ::item.synopsis }}</p>
                             <ul>
                                 <li ng-repeat="column in ::libCtrl.columns" ng-hide="column.hide">
