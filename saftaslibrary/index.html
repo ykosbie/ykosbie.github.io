@@ -167,7 +167,7 @@
                                 row[col.name] = rawData.feed.entry[ixEntry][col.entryPropName].$t;
                             }
 
-                            row.imageurl = "images/" + row.code + ".jpg";
+                            row.imageurl = "images/" + row.code.toLowerCase() + ".jpg";
                             rows.push(row);
                         }
                     }
