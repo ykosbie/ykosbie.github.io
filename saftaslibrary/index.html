@@ -67,12 +67,11 @@
                 .module("app")
                 .controller("LibraryController", LibraryController);
 
-            LibraryController.$inject = ["googleSheetKey", "$http", "$rootScope"];
-            function LibraryController(googleSheetKey, $http, $rootScope) {
+            LibraryController.$inject = ["googleSheetKey", "$http", "$timeout"];
+            function LibraryController(googleSheetKey, $http, $timeout) {
                 var vm = this;
 
                 vm.clearFilter = clearFilter;
-                vm.getStructuredQuery = getStructuredQuery;
                 vm.filter = filter;
                 vm.parseColumns = parseColumns;
                 vm.parseRows = parseRows;
@@ -86,33 +85,21 @@
 
                     vm.filter();
                 }
-
-                function getStructuredQuery() {
-                    var sq = "";
-
-                    for (var ixColumn = 0; ixColumn < vm.columns.length; ixColumn++) {
-                        if (vm.columns[ixColumn].filter) {
-                            if (sq.length) sq += " and ";
-                            sq += vm.columns[ixColumn].name + "=" + vm.columns[ixColumn].filter;
-                        }
-                    }
-
-                    return sq;
-                }
-
+                
                 function filter() {
                     vm.loading = true;
-                    var sq = vm.getStructuredQuery();
-                    var params = {};
-                    if (sq) params.sq = sq;
 
-                    $http({
-                        url: "https://spreadsheets.google.com/feeds/list/" + googleSheetKey + "/od6/public/full?alt=json",
-                        method: "GET",
-                        params: params
-                    })
-                        .then(function (httpResponse) {
-                            vm.items = vm.parseRows(httpResponse.data);
+                    $timeout()
+                        .then(function () {
+                            vm.items = vm.allItems.filter(function (item) {
+                                for (var ixColumn = 0; ixColumn < vm.columns.length; ixColumn++) {
+                                    var column = vm.columns[ixColumn];
+
+                                    if (column.filter && item[column.name].toLowerCase().indexOf(column.filter.toLowerCase()) === -1) return false;
+                                }
+
+                                return true;
+                            });
 
                             vm.loading = false;
                         });
@@ -129,7 +116,7 @@
                             vm.loading = false;
 
                             vm.columns = vm.parseColumns(httpResponse.data);
-                            vm.items = vm.parseRows(httpResponse.data);
+                            vm.items = vm.allItems = vm.parseRows(httpResponse.data);
                         });
                 }
 
@@ -240,12 +227,11 @@
                 </div>
             </div>
 
-            <div class="clearfix"></div>
-
-            <div class="form-group">
-                <div class="col-md-offset-3 col-md-9">
+            <div class="form-group" style="margin: 10px 0">
+                <div class="col-md-12">
                     <button class="btn btn-primary">Filter</button>
                     <button class="btn btn-default" type="button" ng-click="libCtrl.clearFilter() || frmLibFilter.$setPristine()">Clear</button>
+                    <span class="form-control-static">Showing {{ libCtrl.items.length }} matches out of {{ libCtrl.allItems.length }}.</span>
                 </div>
             </div>
         </form>
